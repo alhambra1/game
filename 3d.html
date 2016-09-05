@@ -1,0 +1,699 @@
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<title>Game</title>
+		<meta charset="utf-8">
+		<style type="text/css">
+			body {
+				font-family: Monospace;
+				font-size: 12px;
+				background-color: blue; /*#f0f0f0;*/
+				margin: 0px;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="../three.js/build/three.js"></script>
+
+		<script type="text/javascript">
+		
+		
+			var  solo_game = 0,
+			field_width = 1050,
+			field_depth = 650,
+			field_height = 0,
+			  
+		 	instructions_top = 6,
+			instructions_left = 921,
+			instructions_color = '0xffffff',
+			instructions_background = 'default',
+			instructions_text = 'Bat1:F,J<br />' +
+			                    'Bat2:Z,X<br />' +
+			                    'Zoom:W,S<br />' +
+			                    'Rotate:Click+Mouse<br />' +
+			                    'Restart:Shift+R<br />' +
+			                    'Volley:1-0<br />' +
+			                    '<a href="index.html" style="color:black;">2D</a>',
+			  
+			bat1_width = 60,
+			bat1_half_width = bat1_width / 2,
+			bat1_height = 10,
+			bat1_depth = 10,
+			bat1_half_depth = bat1_depth / 2,
+			bat1_color = 0x90EE90,
+			  
+			bat2_width = 60,
+			bat2_half_width = bat2_width / 2,
+			bat2_height = 10,
+			bat2_depth = 10,
+			bat2_half_depth = bat2_depth / 2,
+			bat2_color = 0x90EE90,
+			  
+			ball_width = 12,
+			ball_half_width = ball_width / 2,
+			ball_height = 12,
+			ball_depth = 12,
+			ball_half_depth = ball_depth / 2,
+			ball_color = 0xFFFF00,
+			  
+			bat1_position_x = 0,
+			bat1_position_y = bat1_height / 2,
+			bat1_position_z = field_depth / 2 - bat1_depth - 22,
+			  
+			bat2_position_x = 0,
+			bat2_position_y = bat2_height / 2,
+			bat2_position_z = - field_depth / 2 + bat2_depth + 22,
+			  
+			ball_position_x = 0,
+			ball_position_y = ball_height / 2,
+			ball_position_z = - field_depth / 2 + 148,
+			  
+			random_objects = {
+			  a: {
+			    width: 106,
+			    height: 30,
+			    depth: 280,
+			    color: 0xFFA500,
+			    x: 625 - field_width / 2 + 106 / 2,
+			    y: 30 / 2,
+			    z: 254 - field_depth / 2 + 280 / 2
+			  },
+			  b: {
+			    width: 74,
+			    height: 40,
+			    depth: 282,
+			    color: 0x008000,
+			    x: 65 - field_width / 2 + 74 / 2,
+			    y: 40 / 2,
+			    z: 154 - field_depth / 2 + 282 / 2
+			  },
+			  c: {
+			    width: 156,
+			    height: 40,
+			    depth: 24,
+			    color: 0xFF0000,
+			    x: 141 - field_width / 2 + 155 / 2,
+			    y: 40 / 2,
+			    z: 154 - field_depth / 2 + 23 / 2 
+			  }
+			}
+			
+			random_objects.a.top = random_objects.a.z - random_objects.a.depth / 2
+			random_objects.a.halfWidth = random_objects.a.width / 2
+			
+			random_objects.b.top = random_objects.b.z - random_objects.b.depth / 2
+			random_objects.b.halfWidth = random_objects.b.width / 2
+
+			random_objects.c.top = random_objects.c.z - random_objects.c.depth / 2			
+			random_objects.c.halfWidth = 78
+			
+			var wireframe = false
+			
+			var stop = 0,
+			ball_direction_z = 'down',
+			ball_distance_x = 0,
+      distance_x_adj = .4, //multiplied by bat_distance (along x) to get the effect on ball_distance_x
+			ball_distance_z = 9,
+      ball_distance_y = 0,
+      gravity = 1,
+      bounce = 0
+			ball_time = 40,
+			bat1_time = 40, //milliseconds
+			bat2_time = 40, //milliseconds
+			initial_bat1_distance = 8,
+			initial_bat2_distance = 8,
+      bat1_distance_inc = 1.3, //distance increased if button is held
+      bat2_distance_inc = 1.3, //distance increased if button is held
+			bat1_distance = 0,
+			bat2_distance = 0,
+			left_button1_pressed = 0,
+			right_button1_pressed = 0,
+			left_button2_pressed = 0,
+			right_button2_pressed = 0,
+			bat1_moving_left = 0,
+			bat1_moving_right = 0,
+			bat2_moving_left = 0,
+			bat2_moving_right = 0,
+			  
+			//ball limits
+			bat1_ball_border = bat1_position_z - bat1_half_depth,
+			bat2_ball_border = bat2_position_z + bat2_half_depth,
+			ball_border_right = field_width / 2 - ball_half_width,
+			ball_border_left = - field_width / 2 + ball_half_width,
+			ball_border_bottom = field_depth / 2 - ball_half_depth,
+			ball_border_top = - field_depth / 2 + ball_half_depth,
+			  
+			//bat limits
+			bat_border_left = - field_width / 2 + bat1_half_width,
+			bat1_border_right = field_width / 2 - bat1_half_width,
+			bat2_border_right = field_width / 2 - bat2_half_width
+			
+			//instructions
+			document.write('<div id="instructions" style="position:absolute; top:' + instructions_top + '; left:')
+			document.write(instructions_left + '; color:' + instructions_color + '; background:' + instructions_background)
+			document.write('; opacity:0.7;">' + instructions_text + '</div>')
+		
+
+			var container, interval,
+			camera, scene, renderer,
+			projector, plane, cube, linesMaterial,
+			color = 0,colors = [ 0xDF1F1F, 0xDFAF1F, 0x80DF1F, 0x1FDF50, 0x1FDFDF, 0x1F4FDF, 0x7F1FDF, 0xDF1FAF, 0xEFEFEF, 0x303030 ],
+			ray, brush, objectHovered,
+			mouse3D, isMouseDown = false, onMouseDownPosition,
+			radious = 1600, theta = 45, onMouseDownTheta = 45, phi = 60, onMouseDownPhi = 60,
+			isShiftDown = false, target = new THREE.Vector3( 0, 100, 0 );
+
+			init();
+			render();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+ 
+				camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.x = radious * Math.sin( theta * Math.PI / 360 ) * Math.cos( phi * Math.PI / 360 );
+				camera.position.y = radious * Math.sin( phi * Math.PI / 360 );
+				camera.position.z = radious * Math.cos( theta * Math.PI / 360 ) * Math.cos( phi * Math.PI / 360 );
+
+				scene = new THREE.Scene();
+				
+				// Field
+				
+				var plane = new THREE.PlaneGeometry( field_width, field_depth );
+				field = new THREE.Mesh( plane, new THREE.MeshBasicMaterial( {color:0xffffff, wireframe:true} ) );
+				
+				field.rotation.x = - 90 * Math.PI / 180
+				scene.add( field );
+				
+				projector = new THREE.Projector();
+
+				bat1_cube = new THREE.CubeGeometry( bat1_width, bat1_height, bat1_depth );
+
+				bat1_brush = new THREE.Mesh( bat1_cube, new THREE.MeshBasicMaterial( {color: bat1_color, wireframe:wireframe} ) );
+				bat1_brush.position.x = bat1_position_x;
+				bat1_brush.position.y = bat1_position_y;
+				bat1_brush.position.z = bat1_position_z;
+				
+				scene.add( bat1_brush );
+				
+				bat2_cube = new THREE.CubeGeometry( bat2_width, bat2_height, bat2_depth );
+
+				bat2_brush = new THREE.Mesh( bat2_cube, new THREE.MeshBasicMaterial( {color: bat2_color, wireframe:wireframe} ) );
+				bat2_brush.position.x = bat2_position_x;
+				bat2_brush.position.y = bat2_position_y;
+				bat2_brush.position.z = bat2_position_z;
+				
+				scene.add( bat2_brush );
+				
+				ball_cube = new THREE.SphereGeometry( ball_width / 2 ); //CubeGeometry( ball_width, ball_height, ball_depth );
+				
+				ball_brush = new THREE.Mesh( ball_cube, new THREE.MeshBasicMaterial( {color: ball_color, wireframe:wireframe} ) );
+				ball_brush.position.x = ball_position_x;
+				ball_brush.position.y = ball_position_y;
+				ball_brush.position.z = ball_position_z;
+				
+				scene.add( ball_brush );
+				
+				random_objects_brushes = {}
+				
+				for (var i in random_objects){
+				
+					var random_objects_cube = new THREE.CubeGeometry( random_objects[i].width, random_objects[i].height, random_objects[i].depth );
+	
+					random_objects_brushes[i] = new THREE.Mesh( random_objects_cube, new THREE.MeshBasicMaterial( {color: random_objects[i].color, wireframe:wireframe} ) );
+					random_objects_brushes[i].position.x = random_objects[i].x;
+					random_objects_brushes[i].position.y = random_objects[i].y;
+					random_objects_brushes[i].position.z = random_objects[i].z;
+					
+					scene.add( random_objects_brushes[i] );
+				}
+			
+				ray = new THREE.Ray( camera.position, null );
+				onMouseDownPosition = new THREE.Vector2();
+
+				// Lights
+
+				var ambientLight = new THREE.AmbientLight( 0x404040 );
+				scene.add( ambientLight );
+
+				var directionalLight = new THREE.DirectionalLight( 0xffffff );
+				directionalLight.position.x = 1;
+				directionalLight.position.y = 1;
+				directionalLight.position.z = 0.75;
+				directionalLight.position.normalize();
+				scene.add( directionalLight );
+
+				var directionalLight = new THREE.DirectionalLight( 0x808080 );
+				directionalLight.position.x = - 1;
+				directionalLight.position.y = 1;
+				directionalLight.position.z = - 0.75;
+				directionalLight.position.normalize();
+				scene.add( directionalLight );
+
+				renderer = new THREE.CanvasRenderer();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				container.appendChild(renderer.domElement);
+
+				document.addEventListener( 'keydown', onDocumentKeyDown, false );
+				document.addEventListener( 'keyup', onDocumentKeyUp, false );
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+				//document.addEventListener( 'mousewheel', onDocumentMouseWheel, false );
+
+			}
+
+			function onDocumentKeyDown( event ) {
+
+				if ( event.keyCode == 16 ) isShiftDown = true;
+
+				switch( event.keyCode ) {
+					
+					case 87: onDocumentMouseWheel( {wheelDeltaY: 120} ); break;
+					case 83: onDocumentMouseWheel( {wheelDeltaY: -120} ); break;
+					
+					case 49: ball_distance_y = 10; bounce = 3; break; //setBrushColor( 0 ); break;
+					case 50: ball_distance_y = 12; bounce = 4; break; //setBrushColor( 1 ); break;
+					case 51: ball_distance_y = 14; bounce = 5; break; //setBrushColor( 2 ); break;
+					case 52: ball_distance_y = 16; bounce = 6; break; //setBrushColor( 3 ); break;
+					case 53: ball_distance_y = 18; bounce = 7; break; //setBrushColor( 4 ); break;
+					case 54: ball_distance_y = 20; bounce = 8; break; //setBrushColor( 5 ); break;
+					case 55: ball_distance_y = 22; bounce = 9; break; //setBrushColor( 6 ); break;
+					case 56: ball_distance_y = 24; bounce = 10; break; //setBrushColor( 7 ); break;
+					case 57: ball_distance_y = 26; bounce = 11; break; //setBrushColor( 8 ); break;
+					case 48: ball_distance_y = 28; bounce = 12; break; //setBrushColor( 9 ); break;
+
+					case 37: offsetScene( - 1, 0 ); break;
+					case 38: offsetScene( 0, - 1 ); break;
+					case 39: offsetScene( 1, 0 ); break;
+					case 40: offsetScene( 0, 1 ); break;
+					
+					case 82: if ( isShiftDown ) restartGame(); break;
+    
+				    	//f j 70 74
+				    	case 70: 
+				    		left_button1_pressed = 1;
+				      		if (!right_button1_pressed && !bat1_moving_left) {
+				       			bat1_distance = initial_bat1_distance;
+					        	moveBat1Left();
+					     	}
+					     	break;
+				
+				    	case 74:
+				      		right_button1_pressed = 1
+				      		if (!left_button1_pressed && !bat1_moving_right) {
+				       			bat1_distance = initial_bat1_distance;
+				        		moveBat1Right();
+				      		}
+				      		break;
+				
+				    	//z x 90 88
+				    	case 90:
+				      		left_button2_pressed = 1
+				      		if (!right_button2_pressed && !bat2_moving_left) {
+				        		bat2_distance = initial_bat2_distance;
+				        		moveBat2Left();
+				      		}
+				      		break;
+				
+				    	case 88:
+				      		right_button2_pressed = 1
+				      		if (!left_button2_pressed && !bat2_moving_right) {
+				       			bat2_distance = initial_bat2_distance;
+				        		moveBat2Right();
+				      		}
+				}
+			}
+
+			function onDocumentKeyUp( event ) {
+
+				switch( event.keyCode ) {
+
+					case 16: isShiftDown = false; break;
+					case 70: left_button1_pressed = 0; break;
+				    	case 74: right_button1_pressed = 0; break;
+				    	case 90: left_button2_pressed = 0; break;
+				    	case 88: right_button2_pressed = 0; break;
+
+				}
+
+			}
+
+			function onDocumentMouseDown( event ) {
+
+				event.preventDefault();
+
+				isMouseDown = true;
+
+				onMouseDownTheta = theta;
+				onMouseDownPhi = phi;
+				onMouseDownPosition.x = event.clientX;
+				onMouseDownPosition.y = event.clientY;
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				event.preventDefault();
+
+				if ( isMouseDown ) {
+
+					theta = - ( ( event.clientX - onMouseDownPosition.x ) * 0.5 ) + onMouseDownTheta;
+					phi = ( ( event.clientY - onMouseDownPosition.y ) * 0.5 ) + onMouseDownPhi;
+
+					phi = Math.min( 180, Math.max( 0, phi ) );
+
+					camera.position.x = radious * Math.sin( theta * Math.PI / 360 ) * Math.cos( phi * Math.PI / 360 );
+					camera.position.y = radious * Math.sin( phi * Math.PI / 360 );
+					camera.position.z = radious * Math.cos( theta * Math.PI / 360 ) * Math.cos( phi * Math.PI / 360 );
+					camera.updateProjectionMatrix();
+
+				}
+
+				mouse3D = projector.unprojectVector( new THREE.Vector3( ( event.clientX / renderer.domElement.width ) * 2 - 1, - ( event.clientY / renderer.domElement.height ) * 2 + 1, 0.5 ), camera );
+				ray.direction = mouse3D.subSelf( camera.position ).normalize();
+
+				render();
+
+			}
+
+			function onDocumentMouseUp( event ) {
+
+				event.preventDefault();
+
+				isMouseDown = false;
+
+			}
+
+			function onDocumentMouseWheel( event ) {
+
+				radious -= event.wheelDeltaY;
+
+				camera.position.x = radious * Math.sin( theta * Math.PI / 360 ) * Math.cos( phi * Math.PI / 360 );
+				camera.position.y = radious * Math.sin( phi * Math.PI / 360 );
+				camera.position.z = radious * Math.cos( theta * Math.PI / 360 ) * Math.cos( phi * Math.PI / 360 );
+				camera.updateProjectionMatrix();
+
+				render();
+
+			}
+
+			function setBrushColor( value ) {
+
+				color = value;
+				brush.material[ 0 ].color.setHex( colors[ color ] ^ 0x4C000000 );
+
+				render();
+
+			}
+
+
+			function offsetScene( x, z ) {
+
+				var offset = new THREE.Vector3( x, 0, z ).multiplyScalar( 50 );
+
+				for ( var i in scene.objects ) {
+
+					object = scene.objects[ i ];
+
+					if ( object instanceof THREE.Mesh && object !== plane && object !== brush ) {
+
+						object.position.addSelf( offset );
+
+					}
+
+				}
+
+				render();
+
+			}
+
+
+			function render() {
+				camera.lookAt( target );
+				renderer.render( scene, camera );
+
+			}
+			
+			function moveBat1Left() {
+				
+				if (bat1_brush.position.x > bat_border_left) bat1_brush.position.x = bat1_brush.position.x - bat1_distance
+				render()
+				
+				if (bat1_moving_left) bat1_distance += bat1_distance_inc
+			
+				if (left_button1_pressed && !right_button1_pressed) setTimeout(function () {
+					bat1_moving_left = 1
+					moveBat1Left()
+				}, bat1_time)
+			 	else bat1_moving_left = 0
+			}
+			
+			function moveBat2Left() {
+				
+				if (bat2_brush.position.x > bat_border_left) bat2_brush.position.x = bat2_brush.position.x - bat2_distance
+				render()
+				
+				if (bat2_moving_left) bat2_distance += bat2_distance_inc
+			
+				if (left_button2_pressed && !right_button2_pressed) setTimeout(function () {
+					bat2_moving_left = 1
+					moveBat2Left()
+				}, bat2_time)
+			 	else bat2_moving_left = 0
+			}
+			
+			function moveBat1Right() {
+				
+				if (bat1_brush.position.x < bat1_border_right) bat1_brush.position.x = bat1_brush.position.x + bat1_distance
+				render()
+				
+				if (bat1_moving_right) bat1_distance += bat1_distance_inc
+			
+				if (right_button1_pressed && !left_button1_pressed) setTimeout(function () {
+					bat1_moving_right = 1
+					moveBat1Right()
+				}, bat1_time)
+			 	else bat1_moving_right = 0
+			}
+			
+			function moveBat2Right() {
+				
+				if (bat2_brush.position.x < bat2_border_right) bat2_brush.position.x = bat2_brush.position.x + bat2_distance
+				render()
+				
+				if (bat2_moving_right) bat2_distance += bat2_distance_inc
+			
+				if (right_button2_pressed && !left_button2_pressed) setTimeout(function () {
+					bat2_moving_right = 1
+					moveBat2Right()
+				}, bat2_time)
+			 	else bat2_moving_right = 0
+			}
+		
+		  function moveBall() {
+		    var ball_left_edge = Number(ball_brush.position.x - ball_half_width),
+		      ball_right_edge = Number(ball_brush.position.x + ball_half_width),
+		      bat1_left_edge = Number(bat1_brush.position.x - bat1_half_width),
+		      bat1_right_edge = Number(bat1_brush.position.x + bat1_half_width),
+		      bat2_left_edge = Number(bat2_brush.position.x - bat2_half_width),
+		      bat2_right_edge = Number(bat2_brush.position.x + bat2_half_width)
+		    
+		    // ball direction down
+		    
+		    if (ball_direction_z == 'down') {
+		    
+		      // ball hitting bat1
+		      
+		      // y motion
+		      if (ball_right_edge >= bat1_left_edge && ball_left_edge <= bat1_right_edge 
+		          && (ball_brush.position.z + ball_half_depth) >= bat1_ball_border) {
+		        ball_direction_z = 'up'
+		
+		        // x motion
+		
+		        if (bat1_moving_left) ball_distance_x -= bat1_distance * distance_x_adj
+		        else if (bat1_moving_right) ball_distance_x += bat1_distance * distance_x_adj
+		
+		        if (ball_brush.position.x > ball_border_left && ball_brush.position.x < ball_border_right) 
+		          ball_brush.position.x += ball_distance_x
+		        else ball_distance_x = - ball_distance_x
+		      }
+
+		      // ball hitting random object
+		      
+		      for (var i in random_objects_brushes){
+		        var random_objects_i_left = Number(random_objects_brushes[i].position.x - random_objects[i].halfWidth)
+		        
+		        // z motion
+		        
+		        if (ball_right_edge >= random_objects_i_left 
+		            && ball_left_edge <= random_objects_i_left + random_objects[i].width 
+		            && (ball_brush.position.z + ball_half_depth) >= random_objects[i].top
+		            && (ball_brush.position.z - ball_half_depth) < random_objects[i].top) {
+		          ball_direction_z = 'up'
+		
+		          // x motion
+		          
+		          if ((ball_brush.position.x - ball_half_width) > ball_border_left && (ball_brush.position.x + ball_half_width) < ball_border_right) 
+		            ball_brush.position.x += ball_distance_x
+		          else ball_distance_x = - ball_distance_x
+		          
+		          if (i == 'c') ball_distance_x += (anim_moving_right) ? anim_distance_x * distance_x_adj : - anim_distance_x * distance_x_adj
+		        }
+		        
+		        // x motion only
+		        
+		        if (((ball_right_edge >= random_objects_i_left 
+		              && ball_left_edge < random_objects_i_left && ball_distance_x > 0)
+		             || (ball_left_edge <= random_objects_i_left + random_objects[i].width 
+		                 && ball_right_edge > random_objects_i_left + random_objects[i].width
+		                 && ball_distance_x < 0))
+		            && (ball_brush.position.z + ball_half_depth) >= random_objects[i].top
+		            && (ball_brush.position.z - ball_half_depth) < random_objects[i].top + random_objects[i].depth) ball_distance_x = - ball_distance_x
+		      }
+
+		      if (ball_brush.position.z < ball_border_bottom) {
+		        ball_brush.position.z += ball_distance_z
+            
+            ball_brush.position.y += ball_distance_y
+            volley()
+		        
+		        if (ball_brush.position.x < ball_border_left || ball_brush.position.x > ball_border_right) ball_distance_x = - ball_distance_x
+		        ball_brush.position.x += ball_distance_x
+		        
+		      } else stop = 1
+		      
+		      render()
+		      
+		      //ball direction up
+		      
+		    } else {
+		    
+		      // ball hitting bat2
+		      
+		      // z motion
+		      if (ball_right_edge >= bat2_left_edge && ball_left_edge <= bat2_right_edge 
+		          && ball_brush.position.z - ball_half_depth < bat2_ball_border && !solo_game) {
+		        ball_direction_z = 'down'
+		
+		        // x motion
+		
+		        if (bat2_moving_left) ball_distance_x -= bat2_distance * distance_x_adj
+		        else if (bat2_moving_right) ball_distance_x += bat2_distance * distance_x_adj
+		
+		        if (ball_brush.position.x > ball_border_left && ball_brush.position.x < ball_border_right) 
+		          ball_brush.position.x += ball_distance_x
+		        else ball_distance_x = - ball_distance_x
+		      }
+	      
+		      // ball hitting random object
+
+		      for (var i in random_objects_brushes){
+		        var random_objects_i_left = Number(random_objects_brushes[i].position.x - random_objects[i].halfWidth)
+		        
+		        // z motion
+		        
+		        if (ball_right_edge >= random_objects_i_left 
+		            && ball_left_edge <= random_objects_i_left + random_objects[i].width 
+		            && (ball_brush.position.z - ball_half_depth) < random_objects[i].top + random_objects[i].depth 
+		            && (ball_brush.position.z + ball_half_depth) > random_objects[i].top + random_objects[i].depth) {
+		          ball_direction_z = 'down'
+		
+		          // x motion
+		          
+		          if ((ball_brush.position.x - ball_half_width) > ball_border_left && (ball_brush.position.x + ball_half_width) < ball_border_right) 
+		            ball_brush.position.x += ball_distance_x
+		          else ball_distance_x = - ball_distance_x
+		          
+		          if (i == 'c') ball_distance_x += (anim_moving_right) ? anim_distance_x * distance_x_adj : - anim_distance_x * distance_x_adj
+		        }
+		        
+		        // x motion only
+		        
+		        if (((ball_right_edge >= random_objects_i_left 
+		              && ball_left_edge < random_objects_i_left && ball_distance_x > 0)
+		             || (ball_left_edge <= random_objects_i_left + random_objects[i].width 
+		                 && ball_right_edge > random_objects_i_left + random_objects[i].width
+		                 && ball_distance_x < 0))
+		            && (ball_brush.position.z + ball_half_depth) < random_objects[i].top + random_objects[i].depth
+		            && (ball_brush.position.z - ball_half_depth) > random_objects[i].top) ball_distance_x = - ball_distance_x
+		      }
+
+		      if (ball_brush.position.z > ball_border_top) {
+		        ball_brush.position.z -= ball_distance_z
+            
+            ball_brush.position.y += ball_distance_y
+            volley()
+            
+		        if (ball_brush.position.x < ball_border_left || ball_brush.position.x > ball_border_right) ball_distance_x = - ball_distance_x
+		        ball_brush.position.x += ball_distance_x
+		      } else if (!solo_game) stop = 1
+		      else ball_direction_z = 'down'
+		    }
+		
+		    setTimeout(function () {
+		      if (!stop) moveBall()
+		    }, ball_time)
+		  }
+		
+			function restartGame(){
+				ball_brush.position.x = ball_position_x
+				ball_brush.position.z = ball_position_z
+				bat1_brush.position.x = bat1_position_x
+				bat2_brush.position.x = bat2_position_x
+				random_objects_brushes.c.position.x = random_objects['c'].x;
+				ball_distance_x = 0
+				ball_distance_z = 10
+				bat1_distance = 0
+				bat2_distance = 0
+				ball_direction_z = 'down'
+				stop = 0
+				render()
+				moveBall()
+			}
+		
+			// Animation
+			
+			var anim_el_left_original = random_objects['c'].x,
+			anim_total_distance_x = 200,
+			anim_distance_x = 8,
+			anim_moving_right = 1,
+			anim_time = 80
+			  
+			function animate_random_object(){
+			  
+			  if (random_objects_brushes.c.position.x < anim_el_left_original 
+			      || random_objects_brushes.c.position.x > anim_el_left_original + anim_total_distance_x) 
+			    anim_moving_right = (anim_moving_right) ? 0 : 1
+			    
+			  random_objects_brushes.c.position.x += (anim_moving_right ? anim_distance_x : - anim_distance_x)
+			  
+			  render()
+			}
+			
+			setInterval(function(){
+			  animate_random_object()
+			}, anim_time)
+      
+      function volley(){
+        if (ball_brush.position.y >= 0) ball_distance_y -= gravity
+        else if (bounce > 0){
+          ball_distance_y = bounce
+          bounce -= 2
+        }
+        else ball_distance_y = 0
+      }
+			
+			moveBall()
+		
+		</script>
+
+	</body>
+</html>
